@@ -3,6 +3,7 @@ import logging
 
 from fastapi import FastAPI, APIRouter
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.employee_handler import emp_router
 from api.login_handler import login_user
@@ -11,6 +12,14 @@ from api.common_handler import common_router
 app = FastAPI()
 main_api_router = APIRouter()
 app.mount("/media", StaticFiles(directory="./media"), name="media")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins. You can restrict to specific domains if needed.
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 
 main_api_router.include_router(emp_router, prefix='/employee',tags=['employee'])
