@@ -1,5 +1,6 @@
 from fastapi import UploadFile, File, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
 from database import schemas
 from datetime import datetime
@@ -77,4 +78,75 @@ async def _update_expected_value(session:AsyncSession,expected_avl_id:int, body:
                     'message':"Updated successfully"}
         return {'succes':False,
                     'message':"Error occured"}
+    
+async def _create_new_task(session:AsyncSession, body:schemas.CreateNewTask):
+        com_dal = common_dal.CommonDal(session)
 
+        new_task = await com_dal.create_new_task(body=body)
+
+        programmers = await com_dal.get_programmers_by_task_id(new_task.id)
+
+        return schemas.ShowNewTask(
+            id=new_task.id,
+            name=new_task.name,
+            start_date=new_task.start_date,
+            end_date=new_task.end_date,
+            programmer_ids=[schemas.ProgrammerSchema.model_validate(programmer) for programmer in programmers],
+            status=new_task.status,
+            description=new_task.description
+        )
+
+async def _get_all_tasks(session:AsyncSession, task_id:Optional[int],status:Optional[str]=None):
+        com_dal = common_dal.CommonDal(session)
+
+        new_tasks = await com_dal.get_all_tasks(status=status, task_id=task_id)
+
+        return [ schemas.ShowNewTask(
+            id=new_task.id,
+            name=new_task.name,
+            start_date=new_task.start_date,
+            end_date=new_task.end_date,
+            programmer_ids=[schemas.ProgrammerSchema.model_validate(programmer) for programmer in await com_dal.get_programmers_by_task_id(new_task.id)],
+            status=new_task.status,
+            description=new_task.description
+            
+        ) for new_task in new_tasks
+        ]
+
+async def _delete_new_task_by_id(session:AsyncSession,task_id:int):
+    async with session.begin():
+        com_dal = common_dal.CommonDal(session)
+
+        res = await com_dal.delete_new_task(task_id=task_id)
+
+        if res:
+            return {'success':True,
+                    'message':'Task deleted successfully'}
+
+async def _update_status_task(session:AsyncSession, task_id:int, status:str):
+    async with session.begin():
+        com_dal = common_dal.CommonDal(session)
+
+        task_dal = await com_dal.update_status_task(status=status, task_id=task_id)
+
+        if task_dal is not None:
+            return {'success':True,
+                    'message':'Muvafaqiyatli ozgardi'}
+        
+async def _update_new_task(session:AsyncSession, body:schemas.UpdateNewTask, task_id:int):
+    com_dal = common_dal.CommonDal(session)
+
+    task_update = await com_dal.update_new_task(task_id=task_id, body=body)
+
+    programmers = await com_dal.get_programmers_by_task_id(task_update.id)
+
+    if task_update:
+        return schemas.ShowNewTask(
+            id=task_update.id,
+            name=task_update.name,
+            start_date=task_update.start_date,
+            end_date=task_update.end_date,
+            programmer_ids=[schemas.ProgrammerSchema.model_validate(programmer) for programmer in programmers],
+            description=task_update.description,
+            status=task_update.status
+        )

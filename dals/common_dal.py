@@ -59,3 +59,94 @@ class CommonDal:
         if res.rowcount >0:
             return True
         return False
+    
+    async def get_programmers_by_task_id(self,task_id):
+        result = await self.db_session.execute(
+            select(models.Employees).join(models.TaskProgrammer).where(models.TaskProgrammer.task_id == task_id)
+        )
+        return result.scalars().all()
+    
+    async def create_new_task(self, body:schemas.CreateNewTask):
+        new_task = models.Task(
+            name=body.name,
+            start_date=body.start_date,
+            end_date=body.end_date,
+            description=body.description
+        )
+        self.db_session.add(new_task)
+        await self.db_session.flush() 
+
+        task_programmers = [
+            models.TaskProgrammer(
+                task_id=new_task.id,
+                programmer_id=int(programmer_id)
+            )
+            for programmer_id in body.programmer_ids
+        ]
+        self.db_session.add_all(task_programmers)
+
+        await self.db_session.commit()
+
+        return new_task
+    
+    async def get_all_tasks(self, status:str, task_id:int):
+        query = select(models.Task).where(models.Task.is_deleted==False)
+        if status:
+            query = select(models.Task).where(and_(models.Task.is_deleted==False),models.Task.status==status)
+        elif task_id:
+            query = select(models.Task).where(and_(models.Task.is_deleted==False),models.Task.id==task_id)
+        elif status and task_id:
+            query = select(models.Task).where(and_(models.Task.is_deleted==False),(models.Task.id==task_id),{models.Task.status==status})
+        
+        res = await self.db_session.execute(query)
+
+        return res.scalars().all()
+    
+    async def delete_new_task(self, task_id:int):
+        query = update(models.Task).where(models.Task.id==task_id).values(is_deleted=True)
+
+        res = await self.db_session.execute(query)
+
+        if res.rowcount > 0:
+            return True
+        return False
+
+    async def update_status_task(self,status:str, task_id:int):
+        query = update(models.Task).where(models.Task.id==task_id).values(status=status).returning(models.Task)
+
+        res = await self.db_session.execute(query)
+        return res.scalar_one_or_none()
+    
+    async def update_new_task(self, task_id: int, body: schemas.UpdateNewTask):
+        task_query = (
+            update(models.Task)
+            .where(models.Task.id == task_id)
+            .values(
+                name=body.name,
+                start_date=body.start_date,
+                end_date=body.end_date,
+                description=body.description,
+            )
+            .returning(models.Task)
+        )
+        task_result = await self.db_session.execute(task_query)
+        updated_task = task_result.scalar_one_or_none()
+
+        if not updated_task:
+            return None
+
+        await self.db_session.execute(
+            delete(models.TaskProgrammer).where(models.TaskProgrammer.task_id == task_id)
+        )
+
+        for programmer_id in body.programmer_ids:
+            task_programmer = models.TaskProgrammer(
+                task_id=task_id,
+                programmer_id=programmer_id,
+            )
+            self.db_session.add(task_programmer)
+
+        await self.db_session.commit()
+
+        return updated_task
+

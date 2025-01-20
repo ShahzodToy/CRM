@@ -50,7 +50,7 @@ async def create_employee(
         password=password,
         date_of_jobstarted=date_of_jobstarted
     )
-    return await employee._create_new_employee(body=employee_data, session=db, file_name=f'uploads/{file.filename}')
+    return await employee._create_new_employee(body=employee_data, session=db, file_name=file.filename)
 
 
 @emp_router.get('/list',response_model=List[schemas.ShowEmployee])
@@ -71,7 +71,6 @@ async def create_project(
     ):
 
     try:
-        print(progemmer_list)
         programmer_ids = [int(x) for x in progemmer_list[0] if x.isdigit()]
     except ValueError:
         raise HTTPException(
@@ -117,3 +116,43 @@ async def change_operator_status(oper_id:int, status:str, db:AsyncSession = Depe
     return await employee._change_operator_status(oper_id=oper_id,
                                                   status=status,
                                                   session=db)
+
+@emp_router.delete('/delete-created-project')
+async def delete_created_project(project_id:int, db:AsyncSession = Depends(session.get_db)):
+    return await employee._delete_created_project(session=db, project_id=project_id)
+
+@emp_router.patch('/update-created-proejct', response_model=schemas.ShowProject)
+async def update_created_project(projec_id:int,
+                                name: str = Form(...),
+                                start_date: datetime = Form(...),
+                                end_date: datetime = Form(...),
+                                progemmer_list: list[str] = Form(...),
+                                price: str = Form(...),
+                                image: Optional[UploadFile] = File(default=None),
+                                db:AsyncSession = Depends(session.get_db)):
+    
+    try:
+        programmer_ids = [int(x) for x in progemmer_list[0].split(",") if x.isdigit()]
+    except ValueError:
+        raise HTTPException(
+                status_code=400, detail="All elements in progemmer_list must be valid integers."
+            )
+    try:
+        file_path = os.path.join(UPLOAD_DIRECTORY, image.filename)
+        with open(file_path, 'wb') as buffer:
+            shutil.copyfileobj(image.file, buffer)
+    except Exception as e:
+            raise HTTPException(status_code=500, detail="Error saving the file.")
+        
+    body = schemas.UpdateProject(
+        name=name,
+        start_date=start_date,
+        end_date=end_date,
+        programmers=programmer_ids,
+        price=price
+    )
+    return await employee._update_created_project(session=db,project_id=projec_id, body=body,image=image.filename)
+
+@emp_router.patch('/update-proejct-status')
+async def update_project_status(project_id:int, status:str, db:AsyncSession = Depends(session.get_db)):
+    return await employee._update_status_project(session=db, project_id=project_id, status=status)

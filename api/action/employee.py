@@ -44,7 +44,6 @@ async def _create_new_employee(body: schemas.EmployeeCreate,
             image=f"{UPLOAD_FOLDER}/{new_employee.image}"
         )
 
-
 async def _get_all_employee(session:AsyncSession, 
                             position_id:int):
     async with session.begin():
@@ -70,7 +69,6 @@ async def _get_all_employee(session:AsyncSession,
 async def _create_project(session:AsyncSession,
                           body:schemas.CreateProject,
                           image:str):
-    async with session.begin():
         emp_dal = user_dal.EmployeeDal(session)
         new_project = await emp_dal.create_project(name=body.name, 
                                                 start_date=body.start_date,
@@ -203,5 +201,48 @@ async def _change_operator_status(session:AsyncSession,
         return {'success':False,
                     'message':'Muvafaqiyatli ozgartirildi'}
 
+async def _delete_created_project(session:AsyncSession, project_id:int):
+    async with session.begin():
+        emp_dal = user_dal.EmployeeDal(session)
 
+        res = await emp_dal.delete_created_project(project_id=project_id)
+
+        if res:
+            return {'success':True,
+                    'message':'Project deleted successfully'}
+        return {'success':False,
+                    'message':'Error occured'}
+    
+async def _update_created_project(session:AsyncSession, project_id:int, body:schemas.UpdateProject, image:str):
+        emp_dal = user_dal.EmployeeDal(session)
+
+        project_updated = await emp_dal.update_created_project(project_id=project_id, image=image, body=body)
+
+        programmers = await emp_dal.get_programmers_by_project_id(project_updated.id)
+
+        return schemas.ShowProject(
+            id=project_updated.id,
+            name=project_updated.name,
+            start_date=project_updated.start_date,
+            end_date=project_updated.end_date,
+            status=project_updated.status,
+            price=project_updated.price,
+            image=project_updated.image,
+            programmers=[schemas.ProgrammerSchema.model_validate(programmer) for programmer in programmers]
+        )
+
+async def _update_status_project(session:AsyncSession, project_id:int, status:str):
+    async with session.begin():
+        emp_dal = user_dal.EmployeeDal(session)
+
+        project_status = await emp_dal.update_status_project(project_id=project_id, status=status)
+
+        if project_status:
+            
+            return {'success':True,
+                    'message':'Status created successfully',
+                    'status':project_status.status}
+        return {'success':False,
+                    'message':'Error occured'}
+        
 

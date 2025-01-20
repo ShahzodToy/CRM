@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi import File, UploadFile, HTTPException
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, update, and_, delete
 from sqlalchemy.orm import joinedload
 
 from database import models, schemas
@@ -94,7 +94,7 @@ class EmployeeDal:
         return result.scalars().all()
 
     async def get_al_projects(self):
-        query = select(models.Project)
+        query = select(models.Project).where(models.Project.is_deleted==False)
         res = await self.db_session.execute(query)
         all_projects = res.scalars().all()
 
@@ -105,7 +105,7 @@ class EmployeeDal:
         query_2 = (
             select(models.Project)
             .options(joinedload(models.Project.programmers)) 
-            .where(models.Project.programmers.any(models.Employees.id == user_id))
+            .where(and_(models.Project.programmers.any(models.Employees.id == user_id)),(models.Project.is_deleted==False))
         )
         result_user_info = await self.db_session.execute(query)
         result_user_projects = await self.db_session.execute(query_2)
@@ -176,4 +176,55 @@ class EmployeeDal:
   
         return res.scalar_one_or_none()
 
+    async def delete_created_project(self, project_id:int):
+        query = update(models.Project).where(models.Project.id == project_id).values(is_deleted=True)
+
+        res = await self.db_session.execute(query)
+        self.db_session.commit()
+
+        if res.rowcount > 0:
+            return True
+        return False
+
+    async def update_created_project(self, project_id:int,image:str|None, body:schemas.UpdateProject):
+    
+        preject_update = (
+                update(models.Project)
+                .where(models.Project.id == project_id)
+                .values(
+                    name=body.name,
+                    start_date=body.start_date,
+                    end_date=body.end_date,
+                    image=image,
+                    price=body.price
+                )
+            ).returning(models.Project)
+        res = await self.db_session.execute(preject_update)
+        task_result = res.scalar_one_or_none()
+
+        if not task_result:
+            return None
+        
+        await self.db_session.execute(
+            delete(models.ProjectProgrammer).where(models.ProjectProgrammer.project_id == project_id)
+        )
+        for programmer_id in body.programmers:
+            project_programmer = models.ProjectProgrammer(
+                project_id=project_id,
+                programmer_id=programmer_id,
+            )
+            self.db_session.add(project_programmer)
+
+            
+        await self.db_session.commit()
+
+        return task_result
+    
+    async def update_status_project(self, project_id:int, status:str):
+        project_update = update(models.Project).where(models.Project.id == project_id).values(status=status).returning(models.Project)
+
+        result = await self.db_session.execute(project_update)
+
+        return result.scalar_one_or_none()
+        
 

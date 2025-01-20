@@ -75,6 +75,15 @@ class ShowProject(BaseModel):
     class Config:
         from_attributes = True
 
+class UpdateProject(BaseModel):
+    name: str
+    start_date: datetime
+    end_date: datetime
+    programmers: List[int]
+    price:str | None
+
+    class Config:
+        from_attributes = True
 
 class ShowEmployeeDetail(BaseModel):
     id:int
@@ -133,3 +142,28 @@ class UpdateExpectedValue(BaseModel):
     date:Optional[datetime] = None
     description:Optional[str] =None
     
+
+class CreateNewTask(BaseModel):
+    name:str
+    start_date:datetime
+    end_date:datetime
+    programmer_ids:List[int]
+    description:str
+
+class ShowNewTask(BaseModel):
+    id:int
+    name:str
+    start_date:datetime
+    end_date:datetime
+    programmer_ids:List[ProgrammerSchema]
+    description:str
+    status:str
+
+class UpdateNewTask(BaseModel):
+    name: Optional[str] = None
+    start_date:Optional[datetime] = None
+    end_date:Optional[datetime] = None
+    programmer_ids:List[int]
+    description:Optional[str] = None
+
+

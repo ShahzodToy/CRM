@@ -25,6 +25,12 @@ class StatusOperator(str, enum.Enum):
     done = 'done'
     cancel = 'cancel'
 
+class StatusTask(str, enum.Enum):
+    to_do = 'to_do'
+    in_progres = 'in_progres'
+    done = 'done'
+    success = 'success'
+
 class StatusExpectedVAlue(str, enum.Enum):
     income = 'income'
     expense = 'expense'
@@ -34,6 +40,14 @@ class ProjectProgrammer(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id:Mapped[int] = mapped_column(ForeignKey('projects.id'))
+    programmer_id: Mapped[int] = mapped_column(ForeignKey('employees.id'))
+
+
+class TaskProgrammer(Base):
+    __tablename__ = 'task_programmer'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id:Mapped[int] = mapped_column(ForeignKey('tasks.id'))
     programmer_id: Mapped[int] = mapped_column(ForeignKey('employees.id'))
 
 
@@ -47,7 +61,7 @@ class Employees(Base):
     phone_number: Mapped[str] = mapped_column(String(50))
     date_of_birth: Mapped[datetime.datetime | None]
     date_of_jobstarted: Mapped[datetime.datetime | None]
-    position_id: Mapped[int] = mapped_column(ForeignKey('positions.id'), onupdate='CASCADE')
+    position_id: Mapped[int] = mapped_column(ForeignKey('positions.id',onupdate='CASCADE'))
     image: Mapped[str | None] = mapped_column(String,index=True)
     salary: Mapped[int | None]
     user_type: Mapped[UserType] = mapped_column(Enum(UserType), default=UserType.custom)
@@ -57,6 +71,12 @@ class Employees(Base):
     projects = relationship(
         "Project",
         secondary="project_programmer",
+        back_populates="programmers"
+    )
+
+    tasks = relationship(
+        "Task",
+        secondary="task_programmer",
         back_populates="programmers"
     )
 
@@ -89,6 +109,7 @@ class Project(Base):
     status: Mapped[StatusProject] = mapped_column(Enum(StatusProject), default=StatusProject.in_progres)
     image: Mapped[str] = mapped_column(String,index=True)
     price: Mapped[str] = mapped_column(String, nullable=True)
+    is_deleted:Mapped[bool|None] = mapped_column(Boolean, nullable=True ,default=False)
 
     programmers = relationship(
         "Employees",
@@ -127,6 +148,25 @@ class ExcpectedValue(Base):
     date: Mapped[datetime.datetime]
     description: Mapped[str]
     type: Mapped[StatusExpectedVAlue] = mapped_column(Enum(StatusExpectedVAlue))
+
+
+class Task(Base):
+    __tablename__ ='tasks'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[int] = mapped_column(String(100))
+    start_date: Mapped[datetime.datetime]
+    end_date: Mapped[datetime.datetime]
+    status: Mapped[StatusTask] = mapped_column(Enum(StatusTask), default=StatusTask.to_do)
+    is_deleted:Mapped[bool|None] = mapped_column(Boolean, nullable=True ,default=False)
+    description: Mapped[str]
+
+    programmers = relationship(
+        "Employees",
+        secondary="task_programmer",
+        back_populates="tasks"
+    )
+
 
 
 
