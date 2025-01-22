@@ -150,3 +150,20 @@ class CommonDal:
 
         return updated_task
 
+    async def get_list_oper_type(self):
+        query = select(models.OperatorType)
+
+        res = await self.db_session.execute(query)
+
+        return res.scalars().all()
+    
+    async def create_operator_type(self, name):
+        query = models.OperatorType(
+            name=name
+        )
+
+        self.db_session.add(query)
+        await self.db_session.commit()
+
+        return query
+        

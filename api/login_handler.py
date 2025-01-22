@@ -9,7 +9,7 @@ from dals import user_dal
 
 from utils.hashing import Hasher
 from utils.security import create_access_token
-from database.schemas import Token
+from database.schemas import Token, ShowCurrentUser
 from utils import settings
 
 from jose import jwt, JWTError
@@ -72,9 +72,38 @@ async def get_user_token(user_form: OAuth2PasswordRequestForm = Depends(), db: A
     try:
         acces_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.username, "other_custom_data": [1, 2, 3, 4]},
+            data={"sub": user.username, "type": user.user_type},
             expires_delta=acces_token_expires,
         )
     except ValueError as e:
         return f'Error on: {e}'
     return {"access_token": access_token, "type": "bearer"}
+
+
+@login_user.get('/get-current-user', response_model=ShowCurrentUser)
+async def get_current_user(access_token:str, db: AsyncSession = Depends(get_db)):
+    credential_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail='something woorgn fucking'
+    )
+    try:
+        payload = jwt.decode(
+            access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get('sub')
+        print("username/email extracted is ", username)
+
+        if username is None:
+            raise credential_exception
+    except JWTError:
+        raise credential_exception
+
+    user = await _get_user_username_auth(username=username, session=db)
+    if user is None:
+        raise credential_exception
+    return ShowCurrentUser(
+        id=user.id,
+        last_name=user.last_name,
+        first_name=user.first_name,
+        image=user.image,
+        user_type=user.user_type
+    )

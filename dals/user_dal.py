@@ -2,8 +2,8 @@ from datetime import datetime
 from fastapi import File, UploadFile, HTTPException
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, and_, delete
-from sqlalchemy.orm import joinedload
+from sqlalchemy import select, update, and_, delete, func, case
+from sqlalchemy.orm import joinedload, selectinload
 
 from database import models, schemas
 
@@ -15,9 +15,11 @@ class EmployeeDal:
         self.db_session = db_session
 
     async def get_all_employee(self, position_id):
-        query = select(models.Employees).where(models.Employees.is_active==True)
+        query = select(models.Employees).join(models.Position).where(models.Employees.is_active==True).options(
+                        selectinload(models.Employees.position))
         if position_id:
-            query = select(models.Employees).where(and_(models.Employees.is_active==True, models.Employees.position_id == position_id))
+            query = select(models.Employees).join(models.Position).where(and_(models.Employees.is_active==True, models.Employees.position_id == position_id)).options(
+                        selectinload(models.Employees.position))
         res = await self.db_session.execute(query)
 
         all_user = res.scalars().all()
@@ -99,6 +101,14 @@ class EmployeeDal:
         all_projects = res.scalars().all()
 
         return all_projects
+    
+    async def get_project_id(self, project_id):
+        query = select(models.Project).where(and_(models.Project.is_deleted==False),(models.Project.id == project_id))
+        res = await self.db_session.execute(query)
+        all_projects = res.scalar_one_or_none()
+
+        return all_projects
+
 
     async def get_employee_detail(self, user_id):
         query = select(models.Employees).where(models.Employees.id==user_id)
@@ -227,4 +237,19 @@ class EmployeeDal:
 
         return result.scalar_one_or_none()
         
+    async def get_list_position(self):
+        query = select(models.Position)
 
+        res = await self.db_session.execute(query)
+
+        return res.scalars().all()
+    
+    async def create_position(self, name):
+        query = models.Position(name=name)
+
+        self.db_session.add(query)
+
+        await self.db_session.commit()
+        return query
+
+    

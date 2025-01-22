@@ -35,6 +35,17 @@ class StatusExpectedVAlue(str, enum.Enum):
     income = 'income'
     expense = 'expense'
 
+class ExpenseType(str, enum.Enum):
+    employee_salary='employee_salary'
+    for_office='for_office'
+    smm_service='smm_service'
+    renting='renting'
+    other_expense='other_expense'
+
+class IncomeType(str, enum.Enum):
+    from_student = 'from_student'
+    from_project='from_project'
+
 class ProjectProgrammer(Base):
     __tablename__ = 'project_programmer'
 
@@ -54,11 +65,9 @@ class TaskProgrammer(Base):
 class Employees(Base):
     __tablename__ = 'employees'
 
-
-
     id: Mapped[int] = mapped_column(primary_key=True)
     first_name: Mapped[str] = mapped_column(String(100))
-    username: Mapped[str] = mapped_column(String(100))
+    username: Mapped[str] = mapped_column(String(100),unique=True)
     last_name: Mapped[str] = mapped_column(String(100))
     phone_number: Mapped[str] = mapped_column(String(50))
     date_of_birth: Mapped[datetime.datetime | None]
@@ -118,6 +127,7 @@ class Project(Base):
         secondary="project_programmer",
         back_populates="projects"
     )
+    income_data:Mapped['IncomeData'] = relationship(back_populates='project')
 
 
 class Operator(Base):
@@ -168,6 +178,39 @@ class Task(Base):
         secondary="task_programmer",
         back_populates="tasks"
     )
+
+class IncomeData(Base):
+    __tablename__ = 'incomes'
+
+    id:Mapped[int] = mapped_column(primary_key=True)
+    name:Mapped[int|None] = mapped_column(String(100), default=None)
+    real_price: Mapped[str|None] = mapped_column(String(100),default=None)
+    pay_price:Mapped[str|None] = mapped_column(String(100))
+    date_paied:Mapped[datetime.datetime|None] = mapped_column(
+         default=datetime.datetime.now
+    )
+    position:Mapped[str|None] = mapped_column(default=None)
+    project_id:Mapped[int|None] = mapped_column(ForeignKey('projects.id',onupdate='CASCADE'),default=None)
+    type:Mapped[IncomeType] = mapped_column(Enum(IncomeType))
+
+    project:Mapped['Project'] = relationship(back_populates='income_data')
+
+
+class ExpenseData(Base):
+    __tablename__ = 'expences'
+
+    id:Mapped[int] = mapped_column(primary_key=True)
+    name:Mapped[str] = mapped_column(default=None)
+    price_paid:Mapped[str] = mapped_column(String(100))
+    description:Mapped[str] = mapped_column(default=None)
+    date_paied:Mapped[datetime.datetime] = mapped_column(
+         default=datetime.datetime.now
+    )
+    employee_salary_id:Mapped[int] = mapped_column(ForeignKey('employees.id',onupdate='CASCADE'))
+    type:Mapped[IncomeType] = mapped_column(Enum(IncomeType))
+
+    employee_salary:Mapped['Employees'] = mapped_column(Enum(ExpenseType))
+
 
 
 

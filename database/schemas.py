@@ -35,6 +35,7 @@ class ShowEmployee(BaseModel):
     salary: int
     user_type: str
     image: Optional[str] = None
+    position:str
 
     class Config:
         orm_format = True
@@ -150,6 +151,7 @@ class CreateNewTask(BaseModel):
     programmer_ids:List[int]
     description:str
 
+
 class ShowNewTask(BaseModel):
     id:int
     name:str
@@ -167,3 +169,58 @@ class UpdateNewTask(BaseModel):
     description:Optional[str] = None
 
 
+class ShowPosition(BaseModel):
+    id:int
+    name:str
+
+class ShowCurrentUser(BaseModel):
+    id:int
+    last_name:str
+    first_name:str
+    image:str
+    user_type:str
+    
+class CreateIncomeStudent(BaseModel):
+    name:str
+    real_price:str
+    pay_price:str
+    date_paid:datetime
+    position:str
+
+
+class CreateIncomeProject(BaseModel):
+    pay_price:str
+    project_id:int
+    
+
+class ShowIncomeStudent(BaseModel):
+    id:int
+    name:str
+    real_price:str
+    pay_price:str
+    left_price:str
+    date_paied:datetime
+    position:str
+    type:str
+
+class ShowIncomeProject(BaseModel):
+    id:int
+    name:str
+    date_start:datetime
+    date_end:datetime
+    real_price:str
+    pay_price:str
+    left_price:int
+    date_paied:datetime
+    type:str
+    programmers:List[ProgrammerSchema]
+
+class UpdateStudentIncome(BaseModel):
+    name:str = None
+    real_price:str= None
+    pay_price:str= None
+    date_paied:datetime= None
+    position:str= None
+    
+class UpdateIncomeProject(BaseModel):
+    pay_price:str

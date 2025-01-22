@@ -56,7 +56,6 @@ async def _create_expected_value(session:AsyncSession, body:schemas.CreateExpect
             type=create_val.type
         )
     
-
 async def _delete_expected_value(session:AsyncSession, expected_val_id:int):
     async with session.begin():
         com_dal = common_dal.CommonDal(session)
@@ -150,3 +149,28 @@ async def _update_new_task(session:AsyncSession, body:schemas.UpdateNewTask, tas
             description=task_update.description,
             status=task_update.status
         )
+
+async def _get_list_operator_type(session:AsyncSession):
+    com_dal = common_dal.CommonDal(session)
+    list_oper = await com_dal.get_list_oper_type()
+
+    return [
+        schemas.ShowPosition(
+            id=oper_type.id,
+            name=oper_type.name
+        )
+        for oper_type in list_oper
+    ]
+
+async def _create_operator_type(session:AsyncSession, name:str):
+    async with session.begin():
+
+        com_dal = common_dal.CommonDal(session)
+
+        operator_type = await com_dal.create_operator_type(name=name)
+
+        return schemas.ShowPosition(
+            id=operator_type.id,
+            name=operator_type.name
+        )
+

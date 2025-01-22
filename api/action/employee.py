@@ -59,6 +59,7 @@ async def _get_all_employee(session:AsyncSession,
                 date_of_birth=user.date_of_birth,
                 date_of_jobstarted=user.date_of_jobstarted,
                 username=user.username,
+                position=user.position.name,
                 salary=user.salary,
                 user_type=user.user_type,
                 image=f"{UPLOAD_FOLDER}/{user.image}"
@@ -245,4 +246,25 @@ async def _update_status_project(session:AsyncSession, project_id:int, status:st
         return {'success':False,
                     'message':'Error occured'}
         
+async def _get_list_position(session:AsyncSession):
+    async with session.begin():
+        emp_dal = user_dal.EmployeeDal(session)
+        list_positions = await emp_dal.get_list_position()
 
+        return [
+            schemas.ShowPosition(
+                id=position.id,
+                name=position.name
+            )
+            for position in list_positions
+        ]
+    
+async def _create_position(session:AsyncSession, name:str):
+    async with session.begin():
+        emp_dal = user_dal.EmployeeDal(session)
+        position = await emp_dal.create_position(name=name)
+
+        return schemas.ShowPosition(
+            id=position.id,
+            name=position.name
+        )

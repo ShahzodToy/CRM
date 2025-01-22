@@ -58,4 +58,11 @@ async def update_task_status(task_id:int, update_new_task:schemas.UpdateNewTask,
     #         raise ValueError(f"Field '{field}' cannot be None or missing.")
     return await common_action._update_new_task(task_id=task_id,body=update_new_task, session=db)
 
+@common_router.get('/list-operator-type', response_model=List[schemas.ShowPosition])
+async def get_list_operator_type(db:AsyncSession = Depends(session.get_db)):
+    return await common_action._get_list_operator_type(session=db)
+
+@common_router.post('/create-operator-type',response_model=schemas.ShowPosition)
+async def create_operator_type(name:str, db:AsyncSession=Depends(session.get_db)):
+    return await common_action._create_operator_type(session=db,name=name)
 

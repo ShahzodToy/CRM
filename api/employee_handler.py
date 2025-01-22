@@ -2,6 +2,7 @@ import shutil
 import os
 from typing import Optional, List
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
+from fastapi_pagination.ext.sqlalchemy import paginate
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -94,7 +95,6 @@ async def create_project(
     )
     return await employee._create_project(session=db, body=body,image=f'projects/{image.filename}')
     
-
 @emp_router.get('/list-projects', response_model=List[schemas.ShowProject])
 async def get_list_projects(db:AsyncSession = Depends(session.get_db)):
     return await employee._get_all_projects(db)
@@ -156,3 +156,12 @@ async def update_created_project(projec_id:int,
 @emp_router.patch('/update-proejct-status')
 async def update_project_status(project_id:int, status:str, db:AsyncSession = Depends(session.get_db)):
     return await employee._update_status_project(session=db, project_id=project_id, status=status)
+
+@emp_router.get('/position-list', response_model=List[schemas.ShowPosition])
+async def get_list_positions(db:AsyncSession = Depends(session.get_db)):
+    return await employee._get_list_position(session=db)
+
+@emp_router.post('/create_position',response_model=schemas.ShowPosition)
+async def create_position(name:str, db:AsyncSession = Depends(session.get_db)):
+    return await employee._create_position(session=db, name=name)
+
