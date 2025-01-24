@@ -1,6 +1,8 @@
 from datetime import datetime
 from fastapi import File, UploadFile, HTTPException
+from typing import Optional
 
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, and_, delete, func, case
 from sqlalchemy.orm import joinedload, selectinload
@@ -28,7 +30,7 @@ class EmployeeDal:
     async def create_employee(self, first_name:str, last_name:str,
                               password:str, position_id: int,phone_number:str,
                               date_of_birth:datetime, date_of_jobstarted, salary:int,username:str,
-                              image:str):
+                              image):
         
         new_employee = models.Employees(
             first_name=first_name,
@@ -45,11 +47,67 @@ class EmployeeDal:
 
         self.db_session.add(new_employee)
         await self.db_session.flush()
-        return new_employee
+
+        query = (
+        select(models.Employees)
+        .options(joinedload(models.Employees.position))  
+        .where(and_(models.Employees.id == new_employee.id), (models.Employees.is_active==True))
+    )
+        result = await self.db_session.execute(query)
+        employee_with_position = result.scalars().first()
+
+        return employee_with_position
+    
+    async def update_employee(self, first_name: str, last_name: str, user_id: int,
+                          phone_number: str, date_of_birth: datetime,
+                          date_of_jobstarted: datetime, salary: int, username: str,
+                          image: str = None):
+        try:
+            # Update the employee record
+            query = (
+                update(models.Employees)
+                .where(and_(models.Employees.id == user_id, models.Employees.is_active == True))
+                .values(
+                    first_name=first_name,
+                    last_name=last_name,
+                    phone_number=phone_number,
+                    date_of_birth=date_of_birth,
+                    salary=salary,
+                    username=username,
+                    date_of_jobstarted=date_of_jobstarted,
+                    image=image
+                )
+                .returning(models.Employees)
+            )
+            user_update = await self.db_session.execute(query)
+            await self.db_session.commit()  
+
+            user_ = user_update.scalar_one_or_none()
+
+            if not user_:
+                raise NoResultFound(f"Active employee with ID {user_id} not found.")
+
+            res_query = (
+                select(models.Employees)
+                .where(and_(models.Employees.id == user_.id, models.Employees.is_active == True))
+                .join(models.Position)
+                .options(joinedload(models.Employees.position))
+            )
+            result = await self.db_session.execute(res_query)
+            updated_employee = result.scalar_one_or_none()
+
+            if not updated_employee:
+                raise NoResultFound(f"Unable to fetch updated employee with ID {user_id}.")
+
+            return updated_employee
+
+        except Exception as e:
+            print(f"Error updating employee: {e}")
+            raise
 
     async def get_username(self, username:str):
         query = (
-            select(models.Employees).where(models.Employees.username == username)
+            select(models.Employees).where(and_(models.Employees.username == username)(models.Employees.is_active==True))
         )
         res = await self.db_session.execute(query)
 
@@ -91,7 +149,7 @@ class EmployeeDal:
     
     async def get_programmers_by_project_id(self, project_id: int):
         result = await self.db_session.execute(
-            select(models.Employees).join(models.ProjectProgrammer).where(models.ProjectProgrammer.project_id == project_id)
+            select(models.Employees).join(models.ProjectProgrammer).where(and_(models.ProjectProgrammer.project_id == project_id),(models.Employees.is_active==True))
         )
         return result.scalars().all()
 
@@ -109,9 +167,8 @@ class EmployeeDal:
 
         return all_projects
 
-
     async def get_employee_detail(self, user_id):
-        query = select(models.Employees).where(models.Employees.id==user_id)
+        query = select(models.Employees).where(and_(models.Employees.id==user_id)(models.Employees.is_active==True)).join(models.Position).options(selectinload(models.Employees.position))
         query_2 = (
             select(models.Project)
             .options(joinedload(models.Project.programmers)) 
@@ -153,19 +210,38 @@ class EmployeeDal:
         return operator_with_type.name
     
     async def get_all_operator(self, oper_type_id:int,status:str):
-        query = select(models.Operator)
+        query = select(models.Operator).join(models.OperatorType).options(joinedload(models.Operator.operator_type))
 
         if oper_type_id and status:
-            query = select(models.Operator).where(and_(models.Operator.operator_type_id == oper_type_id, models.Operator.status == status))
+            query = select(models.Operator).where(and_(models.Operator.operator_type_id == oper_type_id, models.Operator.status == status)).join(models.OperatorType).options(joinedload(models.Operator.operator_type))
         if oper_type_id:
-            query = select(models.Operator).where(models.Operator.operator_type_id == oper_type_id)
+            query = select(models.Operator).where(models.Operator.operator_type_id == oper_type_id).join(models.OperatorType).options(joinedload(models.Operator.operator_type))
         elif status:
-            query = select(models.Operator).where(models.Operator.status == status)
+            query = select(models.Operator).where(models.Operator.status == status).join(models.OperatorType).options(joinedload(models.Operator.operator_type))
 
         res = await self.db_session.execute(query)
 
         return res.scalars().all()
     
+    async def update_operator_by_type(self, oper_id, **kwargs):
+        query = update(models.Operator).where(models.Operator.id==oper_id).values(kwargs).returning(models.Operator)
+        res = await self.db_session.execute(query)
+        await self.db_session.commit()
+
+        res_oper = res.scalar_one_or_none()
+
+        res_query = select(models.Operator).where(and_(models.Operator.id==res_oper.id)).join(models.OperatorType).options(joinedload(models.Operator.operator_type))
+        res_ = await self.db_session.execute(res_query)
+
+        return res_.scalar_one_or_none()
+
+    async def delete_operator_by_type(self,oper_id):
+        query = delete(models.Operator).where(models.Operator.id==oper_id)
+
+        res = await self.db_session.execute(query)
+        await self.db_session.commit()
+        return True if res.rowcount >0 else False
+
     async def change_operator_status(self,oper_id:int, status:str):
         if status not in models.StatusOperator.__members__.values():
             raise ValueError(f"Invalid status: {status}. Must be one of {list(models.StatusOperator.__members__.values())}")
@@ -252,4 +328,11 @@ class EmployeeDal:
         await self.db_session.commit()
         return query
 
-    
+    async def delete_employee(self, user_id):
+        query = update(models.Employees).where(models.Employees.id==user_id).values(is_active=False)
+        res = await self.db_session.execute(query)
+        self.db_session.commit()
+
+        if res.rowcount>0:
+            return True
+        return False

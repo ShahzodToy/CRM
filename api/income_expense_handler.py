@@ -50,3 +50,11 @@ async def update_income_project(income_project_id:int, pay_price:str|None, sessi
 @expense_income_handler.get('/get-pie-chart-income')
 async def get_income_chiechart(db:AsyncSession=Depends(session.get_db)):
     return await income_expense._get_income_piechart(session=db)
+
+@expense_income_handler.post('/create-expense-type')
+async def create_expense(body:schemas.CreateNewExpence,db:AsyncSession=Depends(session.get_db)):
+    return await income_expense._create_expence_type(session=db, body=body)
+
+
+
+

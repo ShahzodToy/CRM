@@ -91,8 +91,8 @@ class Employees(Base):
         back_populates="programmers"
     )
 
-
     position: Mapped['Position'] = relationship(back_populates='user')
+    expense:Mapped['ExpenseData'] = relationship(back_populates='employee_salary')
 
     def __repr__(self) -> str:
         return f"Employees(id={self.id!r}, last_name={self.last_name!r})"
@@ -201,15 +201,16 @@ class ExpenseData(Base):
 
     id:Mapped[int] = mapped_column(primary_key=True)
     name:Mapped[str] = mapped_column(default=None)
+    real_price:Mapped[str|None] = mapped_column(default=None)
     price_paid:Mapped[str] = mapped_column(String(100))
     description:Mapped[str] = mapped_column(default=None)
     date_paied:Mapped[datetime.datetime] = mapped_column(
          default=datetime.datetime.now
     )
-    employee_salary_id:Mapped[int] = mapped_column(ForeignKey('employees.id',onupdate='CASCADE'))
-    type:Mapped[IncomeType] = mapped_column(Enum(IncomeType))
+    employee_salary_id:Mapped[int|None] = mapped_column(ForeignKey('employees.id',onupdate='CASCADE'))
+    type:Mapped[ExpenseType] = mapped_column(Enum(ExpenseType))
 
-    employee_salary:Mapped['Employees'] = mapped_column(Enum(ExpenseType))
+    employee_salary:Mapped['Employees'] = relationship(back_populates='expense')
 
 
 

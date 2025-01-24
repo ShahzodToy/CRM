@@ -34,7 +34,7 @@ class ShowEmployee(BaseModel):
     username:str
     salary: int
     user_type: str
-    image: Optional[str] = None
+    image: Optional[str|None] = None
     position:str
 
     class Config:
@@ -91,6 +91,8 @@ class ShowEmployeeDetail(BaseModel):
     last_name: str
     first_name: str
     phone_number: str
+    position_id:int
+    position_name:str
     date_of_birth: Optional[datetime] = None
     date_of_jobstarted: datetime
     username:str
@@ -150,7 +152,7 @@ class CreateNewTask(BaseModel):
     end_date:datetime
     programmer_ids:List[int]
     description:str
-
+    status:str
 
 class ShowNewTask(BaseModel):
     id:int
@@ -224,3 +226,32 @@ class UpdateStudentIncome(BaseModel):
     
 class UpdateIncomeProject(BaseModel):
     pay_price:str
+
+class UpdateEmployeeDetail(BaseModel):
+    name:Optional[str]=None
+    date_of_birth:Optional[datetime]=None
+    salary:Optional[int]=None
+    last_name:Optional[str]=None
+    username:Optional[str]=None
+    first_name:Optional[str]=None
+    phone_number:Optional[str]=None
+    date_of_jobstarted:Optional[datetime]=None
+
+class UpdateOperator(BaseModel):
+    full_name:str=None
+    phone_number:str=None
+    description:str=None
+
+class CreateNewExpence(BaseModel):
+    name:str
+    price_paid:str
+    description:str
+    date_paied:datetime
+    type:str
+
+class ShowExpenseType(BaseModel):
+    id:int
+    price_paid:str
+    description:str
+    date_paied:datetime
+    type:str

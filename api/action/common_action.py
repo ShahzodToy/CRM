@@ -6,7 +6,6 @@ from database import schemas
 from datetime import datetime
 from dals import common_dal
 
-
 async def _get_all_income_expected_value(session: AsyncSession):
     async with session.begin():
         com_dal = common_dal.CommonDal(session)
@@ -23,7 +22,6 @@ async def _get_all_income_expected_value(session: AsyncSession):
             )
             for income_val in all_income
         ]
-    
 
 async def _get_all_expense_expected_value(session: AsyncSession):
     async with session.begin():

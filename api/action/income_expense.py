@@ -169,5 +169,22 @@ async def _get_income_piechart(session:AsyncSession):
         'total':total.grand_total,
         'percentage_income_student':(total.total_from_student/total.grand_total)*100,
         'percentage_income_project':(total.total_from_project/total.grand_total)*100,
-
     }
+
+async def _create_expence_type(session:AsyncSession,
+                               body:schemas.CreateNewExpence):
+    in_ex_dal = income_expense_dal.IncomeExepnseDal(session)
+
+    create_expense = await in_ex_dal.create_expene_by_type(body=body)
+
+    return schemas.ShowExpenseType(
+        id=create_expense.id,
+        price_paid=create_expense.price_paid,
+        description=create_expense.description,
+        date_paied=create_expense.date_paied,
+        type=create_expense.type
+    )
+
+
+
+

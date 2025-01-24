@@ -108,3 +108,21 @@ class IncomeExepnseDal:
         stats = result.one()
 
         return stats
+    
+    async def create_expene_by_type(self,body:schemas.CreateNewExpence):
+        query = models.ExpenseData(
+            name=body.name,
+            description=body.description,
+            price_paid=body.price_paid,
+            date_paied=body.date_paied,
+            type=body.type
+        )
+
+        self.db_session.add(query)
+        await self.db_session.commit()
+
+        return query
+
+
+
+

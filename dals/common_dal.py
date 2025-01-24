@@ -71,7 +71,8 @@ class CommonDal:
             name=body.name,
             start_date=body.start_date,
             end_date=body.end_date,
-            description=body.description
+            description=body.description,
+            status=body.status
         )
         self.db_session.add(new_task)
         await self.db_session.flush() 

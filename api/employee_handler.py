@@ -33,13 +33,14 @@ async def create_employee(
     file: Optional[UploadFile] = File(None)
 ):
     
-    try:
-        file_path = os.path.join(UPLOAD_DIRECTORY, file.filename)
+    if file:
+        file_name = file.filename
+        file_path = os.path.join(UPLOAD_DIRECTORY, file_name)
         with open(file_path, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Error saving the file.")
-    
+    else:
+        file_name = None
+        
     employee_data = schemas.EmployeeCreate(
         date_of_birth=date_of_birth,
         salary=salary,
@@ -51,7 +52,7 @@ async def create_employee(
         password=password,
         date_of_jobstarted=date_of_jobstarted
     )
-    return await employee._create_new_employee(body=employee_data, session=db, file_name=file.filename)
+    return await employee._create_new_employee(body=employee_data, session=db, file_name=file_name)
 
 
 @emp_router.get('/list',response_model=List[schemas.ShowEmployee])
@@ -95,9 +96,47 @@ async def create_project(
     )
     return await employee._create_project(session=db, body=body,image=f'projects/{image.filename}')
     
+@emp_router.delete('/delete-employee')
+async def delete_employee(user_id:int, db:AsyncSession = Depends(session.get_db)):
+    return await employee._delete_employee(user_id=user_id, session=db)
+
 @emp_router.get('/list-projects', response_model=List[schemas.ShowProject])
 async def get_list_projects(db:AsyncSession = Depends(session.get_db)):
     return await employee._get_all_projects(db)
+
+@emp_router.patch('/update-employee')
+async def update_employee_detail(
+    user_id:int,
+    date_of_birth: Optional[datetime] = Form(Ndefault=None),
+    salary: Optional[str] = Form(default=None),
+    last_name: Optional[str] = Form(default=None),
+    username: Optional[str] = Form(default=None),
+    first_name: Optional[str] = Form(default=None),
+    phone_number: Optional[str] = Form(default=None),
+    date_of_jobstarted: Optional[datetime]= Form(default=None),
+    db: AsyncSession = Depends(session.get_db),
+    file: Optional[UploadFile] = File(default=None),
+):
+    if file:
+        file_name = file.filename
+        file_path = os.path.join(UPLOAD_DIRECTORY, file_name)
+        with open(file_path, 'wb') as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    else:
+        file_name = None
+        
+    employee_data = schemas.UpdateEmployeeDetail(
+        date_of_birth=date_of_birth,
+        salary=salary,
+        last_name=last_name,
+        username=username,
+        first_name=first_name,
+        phone_number=phone_number,
+        date_of_jobstarted=date_of_jobstarted
+    )
+    
+    return await employee._update_employee_detail(session=db, body=employee_data,
+                                                  image=file_name, user_id=user_id)
 
 @emp_router.get('/detail-employee', response_model=schemas.ShowEmployeeDetail)
 async def get_detail_employee(user_id:int, db:AsyncSession = Depends(session.get_db)):
@@ -165,3 +204,12 @@ async def get_list_positions(db:AsyncSession = Depends(session.get_db)):
 async def create_position(name:str, db:AsyncSession = Depends(session.get_db)):
     return await employee._create_position(session=db, name=name)
 
+@emp_router.patch('/update-operator')
+async def update_operator(oper_id:int, update_params:schemas.UpdateOperator, db:AsyncSession=Depends(session.get_db)):
+    body = update_params.model_dump(exclude_none=True)
+    return await employee._update_operator(oper_id=oper_id,
+                                           body=body, session=db)
+
+@emp_router.delete('/delete-operator')
+async def delete_operator(oper_id:int, db:AsyncSession=Depends(session.get_db)):
+    return await employee._delete_oper_by_id(oper_id=oper_id, session=db)

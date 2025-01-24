@@ -1,6 +1,7 @@
 from fastapi import UploadFile, File, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from typing import Optional
 from database import schemas
 from datetime import datetime
 from dals import user_dal
@@ -8,11 +9,12 @@ from dals import user_dal
 import os
 
 
-UPLOAD_FOLDER = "uploads"
+UPLOAD_USER = "uploads"
+UPLOAD_PROJETC='projects'
 
 async def _create_new_employee(body: schemas.EmployeeCreate, 
                                session: AsyncSession, 
-                               file_name: str):
+                               file_name):
     async with session.begin():
         emp_dal = user_dal.EmployeeDal(session)
 
@@ -37,6 +39,7 @@ async def _create_new_employee(body: schemas.EmployeeCreate,
             first_name=new_employee.first_name,
             phone_number=new_employee.phone_number,
             date_of_birth=new_employee.date_of_birth,
+            position=new_employee.position.name,
             date_of_jobstarted=new_employee.date_of_jobstarted,
             username=new_employee.username,
             salary=new_employee.salary,
@@ -62,7 +65,7 @@ async def _get_all_employee(session:AsyncSession,
                 position=user.position.name,
                 salary=user.salary,
                 user_type=user.user_type,
-                image=f"{UPLOAD_FOLDER}/{user.image}"
+                image=f"{UPLOAD_USER}/{user.image}"
             )
             for user in all_users
         ]
@@ -86,7 +89,7 @@ async def _create_project(session:AsyncSession,
             end_date=new_project.end_date,
             status=new_project.status,
             price=new_project.price,
-            image=new_project.image,
+            image=f"{UPLOAD_PROJETC}/{new_project.image}",
             programmers=[schemas.ProgrammerSchema.model_validate(programmer) for programmer in programmers]
         )
 
@@ -104,7 +107,7 @@ async def _get_all_projects(session:AsyncSession):
                 programmers=[schemas.ProgrammerSchema.model_validate(programmer) for programmer in await emp_dal.get_programmers_by_project_id(project.id)],
                 status=project.status,
                 price=project.price,
-                image=project.image,
+                image=f"{UPLOAD_PROJETC}/{project.image}",
             )
             
             for project in all_projects
@@ -125,7 +128,7 @@ async def _get_detail_employee(user_id:int,
                 programmers=[schemas.ProgrammerSchema.model_validate(programmer) for programmer in await emp_dal.get_programmers_by_project_id(project.id)],
                 status=project.status,
                 price=project.price,
-                image=project.image,
+                image=f"{UPLOAD_PROJETC}/{project.image}",
             )
             
             for project in user_projects
@@ -136,6 +139,8 @@ async def _get_detail_employee(user_id:int,
             id=user_info.id,
             last_name=user_info.last_name,
             first_name=user_info.first_name,
+            position_name=user_info.position.name,
+            position_id=user_info.position.id,
             phone_number=user_info.phone_number,
             date_of_birth=user_info.date_of_birth,
             date_of_jobstarted=user_info.date_of_jobstarted,
@@ -182,7 +187,7 @@ async def _get_all_operators(session:AsyncSession,
                 phone_number = oper_user.phone_number,
                 description = oper_user.description,
                 operator_type_id = oper_user.operator_type_id,
-                operator_type = await emp_user.get_operator_type_by_id(oper_user.operator_type_id),
+                operator_type = oper_user.operator_type.name,
                 status =  oper_user.status,
                 )
                 for oper_user in operator_all 
@@ -268,3 +273,66 @@ async def _create_position(session:AsyncSession, name:str):
             id=position.id,
             name=position.name
         )
+    
+async def _update_employee_detail(user_id:int, session:AsyncSession, body:schemas.UpdateEmployeeDetail,
+                                  image:str=None):
+        emp_dal = user_dal.EmployeeDal(session)
+
+        # Create a new employee via DAL
+        new_employee = await emp_dal.update_employee(
+            first_name=body.first_name,
+            last_name=body.last_name,
+            phone_number=body.phone_number,
+            date_of_jobstarted=body.date_of_jobstarted,
+            date_of_birth=body.date_of_birth,
+            username=body.username,
+            salary=body.salary,
+            image=image,
+            user_id=user_id
+        )
+
+        # Return the employee details
+        return schemas.ShowEmployee(
+            id=new_employee.id,
+            last_name=new_employee.last_name,
+            first_name=new_employee.first_name,
+            phone_number=new_employee.phone_number,
+            date_of_birth=new_employee.date_of_birth,
+            position=new_employee.position.name,
+            date_of_jobstarted=new_employee.date_of_jobstarted,
+            username=new_employee.username,
+            salary=new_employee.salary,
+            user_type=new_employee.user_type,
+            image=f"{UPLOAD_USER}/{new_employee.image}"
+        )
+    
+async def _delete_employee(session:AsyncSession, user_id:int):
+    async with session.begin():
+        empl_dal = user_dal.EmployeeDal(session)
+
+        delelted_user = await empl_dal.delete_employee(user_id=user_id)
+
+        return {'success':True} if delelted_user else {'success':False}
+
+async def _update_operator(session:AsyncSession, oper_id:int, body:dict):
+    emp_dal = user_dal.EmployeeDal(session)
+
+    update_oper = await emp_dal.update_operator_by_type(oper_id=oper_id, **body)
+
+    return schemas.ShowOperator(
+            id = update_oper.id,
+            full_name= update_oper.full_name,
+            phone_number = update_oper.phone_number,
+            description = update_oper.description,
+            operator_type_id = update_oper.operator_type_id,
+            operator_type = update_oper.operator_type.name,
+            status =  update_oper.status,
+            )
+
+async def _delete_oper_by_id(session:AsyncSession, oper_id:int):
+    empl_dal = user_dal.EmployeeDal(session)
+
+    delete_user = await empl_dal.delete_operator_by_type(oper_id=oper_id)
+
+    return {'success':True} if delete_user else {'success':False}
+
