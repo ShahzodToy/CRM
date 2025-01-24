@@ -128,7 +128,7 @@ async def _get_detail_employee(user_id:int,
                 programmers=[schemas.ProgrammerSchema.model_validate(programmer) for programmer in await emp_dal.get_programmers_by_project_id(project.id)],
                 status=project.status,
                 price=project.price,
-                image=f"{UPLOAD_PROJETC}/{project.image}",
+                image=project.image,
             )
             
             for project in user_projects
@@ -147,7 +147,7 @@ async def _get_detail_employee(user_id:int,
             username=user_info.username,
             salary=user_info.salary,
             user_type=user_info.user_type,
-            image=user_info.image,
+            image=f"{UPLOAD_USER}/{user_info.image}",
             projects = all_projects
         )
 
@@ -275,7 +275,7 @@ async def _create_position(session:AsyncSession, name:str):
         )
     
 async def _update_employee_detail(user_id:int, session:AsyncSession, body:schemas.UpdateEmployeeDetail,
-                                  image:str=None):
+                                  image:str):
         emp_dal = user_dal.EmployeeDal(session)
 
         # Create a new employee via DAL
@@ -336,3 +336,9 @@ async def _delete_oper_by_id(session:AsyncSession, oper_id:int):
 
     return {'success':True} if delete_user else {'success':False}
 
+async def _get_image_by_user(session:AsyncSession, user_id:int):
+    emp_dal = user_dal.EmployeeDal(session)
+
+    user_image = await emp_dal.get_employee_image(user_id=user_id)
+
+    return user_image

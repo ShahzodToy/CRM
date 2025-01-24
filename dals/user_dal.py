@@ -61,7 +61,7 @@ class EmployeeDal:
     async def update_employee(self, first_name: str, last_name: str, user_id: int,
                           phone_number: str, date_of_birth: datetime,
                           date_of_jobstarted: datetime, salary: int, username: str,
-                          image: str = None):
+                          image: str):
         try:
             # Update the employee record
             query = (
@@ -168,7 +168,7 @@ class EmployeeDal:
         return all_projects
 
     async def get_employee_detail(self, user_id):
-        query = select(models.Employees).where(and_(models.Employees.id==user_id)(models.Employees.is_active==True)).join(models.Position).options(selectinload(models.Employees.position))
+        query = select(models.Employees).where(and_(models.Employees.id==user_id),(models.Employees.is_active==True)).join(models.Position).options(selectinload(models.Employees.position))
         query_2 = (
             select(models.Project)
             .options(joinedload(models.Project.programmers)) 
@@ -336,3 +336,8 @@ class EmployeeDal:
         if res.rowcount>0:
             return True
         return False
+    
+    async def get_employee_image(self,user_id: int):
+        query = select(models.Employees.image).where(and_(models.Employees.id == user_id),(models.Employees.is_active==True)) 
+        result = await self.db_session.execute(query)
+        return result.scalar_one_or_none()

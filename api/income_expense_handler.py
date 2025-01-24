@@ -26,7 +26,6 @@ async def update_income_student(income_student_id:int, update_params:schemas.Upd
     return await income_expense._update_income_student(session=db, income_student_id=income_student_id,
                                                        body=body)
 
-
 @expense_income_handler.post('/create_income_project')
 async def create_income_project(body:schemas.CreateIncomeProject, db:AsyncSession=Depends(session.get_db)):
     return await income_expense._create_income_project(session=db, body=body)

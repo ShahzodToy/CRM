@@ -115,15 +115,19 @@ async def update_employee_detail(
     phone_number: Optional[str] = Form(default=None),
     date_of_jobstarted: Optional[datetime]= Form(default=None),
     db: AsyncSession = Depends(session.get_db),
-    file: Optional[UploadFile] = File(default=None),
+    file: Optional[UploadFile] = File(None),
+    image_remove: Optional[bool] = Form(default=False),
 ):
-    if file:
+    if file:  
         file_name = file.filename
         file_path = os.path.join(UPLOAD_DIRECTORY, file_name)
         with open(file_path, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
-    else:
+    elif image_remove:  
         file_name = None
+    else:
+        # Keep the current image (don't change it)
+        file_name = await employee._get_image_by_user(user_id=user_id, session=db)
         
     employee_data = schemas.UpdateEmployeeDetail(
         date_of_birth=date_of_birth,
