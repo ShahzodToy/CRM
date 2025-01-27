@@ -115,6 +115,7 @@ class IncomeExepnseDal:
             description=body.description,
             price_paid=body.price_paid,
             date_paied=body.date_paied,
+            real_price=body.real_price,
             type=body.type
         )
 
@@ -122,6 +123,24 @@ class IncomeExepnseDal:
         await self.db_session.commit()
 
         return query
+    
+    async def get_list_expense(self,status):
+        query = select(models.ExpenseData).where(models.ExpenseData.type==status)
+
+        res = await self.db_session.execute(query)
+
+        return res.scalars().all()
+    
+    async def delete_expense(self, expense_id):
+        query = delete(models.ExpenseData).where(models.ExpenseData.id==expense_id)
+        res = await self.db_session.execute(query)
+
+        if res.rowcount > 0:
+            return True
+        return False
+
+
+    
 
 
 

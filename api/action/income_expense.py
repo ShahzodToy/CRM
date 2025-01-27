@@ -173,18 +173,45 @@ async def _get_income_piechart(session:AsyncSession):
 
 async def _create_expence_type(session:AsyncSession,
                                body:schemas.CreateNewExpence):
-    in_ex_dal = income_expense_dal.IncomeExepnseDal(session)
+    async with session.begin():
+        in_ex_dal = income_expense_dal.IncomeExepnseDal(session)
 
-    create_expense = await in_ex_dal.create_expene_by_type(body=body)
+        create_expense = await in_ex_dal.create_expene_by_type(body=body)
 
-    return schemas.ShowExpenseType(
-        id=create_expense.id,
-        price_paid=create_expense.price_paid,
-        description=create_expense.description,
-        date_paied=create_expense.date_paied,
-        type=create_expense.type
-    )
+        return schemas.ShowExpenseType(
+            id=create_expense.id,
+            price_paid=create_expense.price_paid,
+            description=create_expense.description,
+            date_paied=create_expense.date_paied,
+            real_price=create_expense.real_price,
+            remainder_price=int(create_expense.real_price) - int(create_expense.price_paid) if create_expense.real_price!=None else None,
+            type=create_expense.type
+        )
 
+async def _get_expence_type_list(session:AsyncSession,status:str):
+    async with session.begin():
+        in_ex_dal = income_expense_dal.IncomeExepnseDal(session)
 
+        expense_list = await in_ex_dal.get_list_expense(status=status)
+
+        if expense_list != []:
+            return [
+                schemas.ShowExpenseType(
+                    id=expense_.id,
+                    price_paid=expense_.price_paid,
+                    description=expense_.description,
+                    date_paied=expense_.date_paied,
+                    real_price=expense_.real_price,
+                    remainder_price=int(expense_.real_price) - int(expense_.price_paid) if expense_.real_price!=None else None,
+                    type=expense_.type
+                )
+                for expense_ in expense_list
+            ]
+
+async def _delete_expense(expense_id:int, session:AsyncSession):
+    async with session.begin():
+        in_ex_dal = income_expense_dal.IncomeExepnseDal(session)
+
+        delete_expense = await in_ex_dal.delete_expense(expense_id=expense_id)
 
 

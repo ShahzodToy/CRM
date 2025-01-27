@@ -62,7 +62,7 @@ class CommonDal:
     
     async def get_programmers_by_task_id(self,task_id):
         result = await self.db_session.execute(
-            select(models.Employees).join(models.TaskProgrammer).where(models.TaskProgrammer.task_id == task_id)
+            select(models.Employees).join(models.TaskProgrammer).where(and_(models.TaskProgrammer.task_id == task_id),(models.Employees.is_active==True))
         )
         return result.scalars().all()
     
@@ -93,11 +93,11 @@ class CommonDal:
     async def get_all_tasks(self, status:str, task_id:int):
         query = select(models.Task).where(models.Task.is_deleted==False)
         if status:
-            query = select(models.Task).where(and_(models.Task.is_deleted==False),models.Task.status==status)
+            query = select(models.Task).where(and_(models.Task.is_deleted==False),(models.Task.status==status))
         elif task_id:
-            query = select(models.Task).where(and_(models.Task.is_deleted==False),models.Task.id==task_id)
+            query = select(models.Task).where(and_(models.Task.is_deleted==False),(models.Task.id==task_id))
         elif status and task_id:
-            query = select(models.Task).where(and_(models.Task.is_deleted==False),(models.Task.id==task_id),{models.Task.status==status})
+            query = select(models.Task).where(and_(models.Task.is_deleted==False),(models.Task.id==task_id),(models.Task.status==status))
         
         res = await self.db_session.execute(query)
 
@@ -167,4 +167,4 @@ class CommonDal:
         await self.db_session.commit()
 
         return query
-        
+   

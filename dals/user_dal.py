@@ -107,7 +107,7 @@ class EmployeeDal:
 
     async def get_username(self, username:str):
         query = (
-            select(models.Employees).where(and_(models.Employees.username == username)(models.Employees.is_active==True))
+            select(models.Employees).where(and_(models.Employees.username == username),(models.Employees.is_active==True))
         )
         res = await self.db_session.execute(query)
 

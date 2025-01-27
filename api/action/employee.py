@@ -44,7 +44,7 @@ async def _create_new_employee(body: schemas.EmployeeCreate,
             username=new_employee.username,
             salary=new_employee.salary,
             user_type=new_employee.user_type,
-            image=f"{UPLOAD_FOLDER}/{new_employee.image}"
+            image=f"{UPLOAD_USER}/{new_employee.image}"
         )
 
 async def _get_all_employee(session:AsyncSession, 

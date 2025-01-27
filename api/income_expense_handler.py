@@ -50,9 +50,19 @@ async def update_income_project(income_project_id:int, pay_price:str|None, sessi
 async def get_income_chiechart(db:AsyncSession=Depends(session.get_db)):
     return await income_expense._get_income_piechart(session=db)
 
-@expense_income_handler.post('/create-expense-type')
+@expense_income_handler.post('/create-expense-type',
+                             description="Bu yerda shu status lar keladi (for_office, smm_service, other_expense, renting)")
 async def create_expense(body:schemas.CreateNewExpence,db:AsyncSession=Depends(session.get_db)):
     return await income_expense._create_expence_type(session=db, body=body)
+
+@expense_income_handler.get('/list-expense-type',
+                            description="Bu yerda shu status lar keladi (for_office, smm_service, other_expense,renting)")
+async def get_list_expense_type(status:str, db:AsyncSession=Depends(session.get_db)):
+    return await income_expense._get_expence_type_list(session=db, status=status)
+
+@expense_income_handler.delete('/delete-expense')
+async def delete_given_expense(expense_id:int, db:AsyncSession=Depends(session.get_db)):
+    return await income_expense._delete_expense(session=db,expense_id=expense_id)
 
 
 

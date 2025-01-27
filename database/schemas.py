@@ -23,7 +23,6 @@ class EmployeeCreate(BaseModel):
             v = v.replace(tzinfo=None)
         return v
     
-
 class ShowEmployee(BaseModel):
     id:int
     last_name: str
@@ -56,7 +55,7 @@ class CreateProject(BaseModel):
 class ProgrammerSchema(BaseModel):
     id: int
     first_name: str
-    image: str
+    image: str|None
     last_name: str
 
     class Config:
@@ -170,7 +169,6 @@ class UpdateNewTask(BaseModel):
     programmer_ids:List[int]
     description:Optional[str] = None
 
-
 class ShowPosition(BaseModel):
     id:int
     name:str
@@ -194,7 +192,6 @@ class CreateIncomeProject(BaseModel):
     pay_price:str
     project_id:int
     
-
 class ShowIncomeStudent(BaseModel):
     id:int
     name:str
@@ -245,6 +242,7 @@ class UpdateOperator(BaseModel):
 class CreateNewExpence(BaseModel):
     name:str
     price_paid:str
+    real_price:Optional[str|None]=None
     description:str
     date_paied:datetime
     type:str
@@ -254,4 +252,21 @@ class ShowExpenseType(BaseModel):
     price_paid:str
     description:str
     date_paied:datetime
+    real_price:str|None
+    remainder_price:int|None
     type:str
+
+class CreateExpenseUser(BaseModel):
+    user_id:int
+    paid_price:str
+
+class ShowExepnseUser(BaseModel):
+    first_name:str
+    last_name:str
+    phone_number:str
+    position:str
+    job_started:datetime
+    salary:int
+    date_paid:datetime
+    price_paid:datetime
+    remainder_price:str
