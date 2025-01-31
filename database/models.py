@@ -78,6 +78,7 @@ class Employees(Base):
     user_type: Mapped[UserType] = mapped_column(Enum(UserType), default=UserType.custom)
     password: Mapped[str] = mapped_column(String)
     is_active: Mapped[bool] = mapped_column(default=True)
+    created_time: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now())
 
     projects = relationship(
         "Project",
@@ -200,10 +201,10 @@ class ExpenseData(Base):
     __tablename__ = 'expences'
 
     id:Mapped[int] = mapped_column(primary_key=True)
-    name:Mapped[str] = mapped_column(default=None)
+    name:Mapped[str|None] = mapped_column(default=None)
     real_price:Mapped[str|None] = mapped_column(default=None)
     price_paid:Mapped[str] = mapped_column(String(100))
-    description:Mapped[str] = mapped_column(default=None)
+    description:Mapped[str|None] = mapped_column(default=None)
     date_paied:Mapped[datetime.datetime] = mapped_column(
          default=datetime.datetime.now
     )

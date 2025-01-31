@@ -10,6 +10,7 @@ from dals import user_dal
 from utils.hashing import Hasher
 from utils.security import create_access_token
 from database.schemas import Token, ShowCurrentUser
+from database import models
 from utils import settings
 
 from jose import jwt, JWTError
@@ -26,7 +27,6 @@ async def _get_user_username_auth(username: str, session: AsyncSession):
             username=username
         )
 
-
 async def authenticate_user(email: str, password: str, db: AsyncSession):
     user = await _get_user_username_auth(username=email, session=db)
 
@@ -35,7 +35,6 @@ async def authenticate_user(email: str, password: str, db: AsyncSession):
     if not Hasher.verify_password(password, user.password):
         return
     return user
-
 
 async def get_current_user_from_token(token: str = Depends(oauth_token), db: AsyncSession = Depends(get_db)):
     credential_exception = HTTPException(
@@ -59,7 +58,6 @@ async def get_current_user_from_token(token: str = Depends(oauth_token), db: Asy
         raise credential_exception
     return user
 
-
 @login_user.post('/access_token', response_model=Token)
 async def get_user_token(user_form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     user = await authenticate_user(user_form.username, user_form.password, db)
@@ -79,31 +77,18 @@ async def get_user_token(user_form: OAuth2PasswordRequestForm = Depends(), db: A
         return f'Error on: {e}'
     return {"access_token": access_token, "type": "bearer"}
 
-
 @login_user.get('/get-current-user', response_model=ShowCurrentUser)
-async def get_current_user(access_token:str, db: AsyncSession = Depends(get_db)):
-    credential_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail='something woorgn fucking'
-    )
-    try:
-        payload = jwt.decode(
-            access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get('sub')
-        print("username/email extracted is ", username)
-
-        if username is None:
-            raise credential_exception
-    except JWTError:
-        raise credential_exception
-
-    user = await _get_user_username_auth(username=username, session=db)
-    if user is None:
-        raise credential_exception
+async def get_current_user(
+    current_user: models.Employees = Depends(get_current_user_from_token)
+):
+    """
+    Endpoint to get the currently authenticated user.
+    Requires a valid access token in the `Authorization` header.
+    """
     return ShowCurrentUser(
-        id=user.id,
-        last_name=user.last_name,
-        first_name=user.first_name,
-        image=user.image,
-        user_type=user.user_type
+        id=current_user.id,
+        last_name=current_user.last_name,
+        first_name=current_user.first_name,
+        image=f'uploads/{current_user.image}',
+        user_type=current_user.user_type
     )

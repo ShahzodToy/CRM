@@ -17,6 +17,17 @@ emp_router = APIRouter()
 
 UPLOAD_DIRECTORY = "media/uploads"  # Directory to store uploaded files
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)  # Ensure the directory exists
+UPLOAD_DIRECTORY1 = 'media/projects'
+
+@emp_router.get('/list',response_model=List[schemas.ShowEmployee])
+async def get_all_employee(position_id:Optional[int]=None ,db:AsyncSession = Depends(session.get_db),
+                           current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await employee._get_all_employee(db, position_id)
+
+@emp_router.delete('/delete-employee')
+async def delete_employee(user_id:int, db:AsyncSession = Depends(session.get_db),
+                          current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await employee._delete_employee(user_id=user_id, session=db)
 
 @emp_router.post('/create_user', response_model=schemas.ShowEmployee)
 async def create_employee(
@@ -30,7 +41,8 @@ async def create_employee(
     password: str = Form(...),
     date_of_jobstarted: datetime = Form(...),
     db: AsyncSession = Depends(session.get_db),
-    file: Optional[UploadFile] = File(None)
+    file: Optional[UploadFile] = File(None),
+    current_user:models.Employees=Depends(get_current_user_from_token)
 ):
     
     if file:
@@ -54,56 +66,6 @@ async def create_employee(
     )
     return await employee._create_new_employee(body=employee_data, session=db, file_name=file_name)
 
-
-@emp_router.get('/list',response_model=List[schemas.ShowEmployee])
-async def get_all_employee(position_id:Optional[int]=None ,db:AsyncSession = Depends(session.get_db)):
-    return await employee._get_all_employee(db, position_id)
-    
-UPLOAD_DIRECTORY1 = 'media/projects'
-
-@emp_router.post('/create_project',response_model=schemas.ShowProject)
-async def create_project(
-    name: str = Form(...),
-    start_date: datetime = Form(...),
-    end_date: datetime = Form(...),
-    progemmer_list: list[str] = Form(...),
-    price: str = Form(...),
-    db: AsyncSession = Depends(session.get_db),
-    image: Optional[UploadFile] = File(None)
-    ):
-
-    try:
-        programmer_ids = [int(x) for x in progemmer_list[0] if x.isdigit()]
-    except ValueError:
-        raise HTTPException(
-                status_code=400, detail="All elements in progemmer_list must be valid integers."
-            )
-        
-    try:
-        file_path = os.path.join(UPLOAD_DIRECTORY1, image.filename)
-        with open(file_path, 'wb') as buffer:
-            shutil.copyfileobj(image.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Error saving the file.")
-    
-    body = schemas.CreateProject(
-        name=name,
-        start_date=start_date,
-        end_date=end_date,
-        programmer_ids=programmer_ids,
-        price=price
-
-    )
-    return await employee._create_project(session=db, body=body,image=f'projects/{image.filename}')
-    
-@emp_router.delete('/delete-employee')
-async def delete_employee(user_id:int, db:AsyncSession = Depends(session.get_db)):
-    return await employee._delete_employee(user_id=user_id, session=db)
-
-@emp_router.get('/list-projects', response_model=List[schemas.ShowProject])
-async def get_list_projects(db:AsyncSession = Depends(session.get_db)):
-    return await employee._get_all_projects(db)
-
 @emp_router.patch('/update-employee')
 async def update_employee_detail(
     user_id:int,
@@ -117,6 +79,7 @@ async def update_employee_detail(
     db: AsyncSession = Depends(session.get_db),
     file: Optional[UploadFile] = File(None),
     image_remove: Optional[bool] = Form(default=False),
+    current_user:models.Employees=Depends(get_current_user_from_token)
 ):
     if file:  
         file_name = file.filename
@@ -143,25 +106,54 @@ async def update_employee_detail(
                                                   image=file_name, user_id=user_id)
 
 @emp_router.get('/detail-employee', response_model=schemas.ShowEmployeeDetail)
-async def get_detail_employee(user_id:int, db:AsyncSession = Depends(session.get_db)):
+async def get_detail_employee(user_id:int, db:AsyncSession = Depends(session.get_db),
+                              current_user:models.Employees=Depends(get_current_user_from_token)):
     return await employee._get_detail_employee(user_id,db)
 
-@emp_router.post('/create_operator', response_model=schemas.ShowOperator)
-async def create_new_operator(body:schemas.CreateOperator, db:AsyncSession = Depends(session.get_db)):
-    return await employee._create_new_operatoe(session=db, body=body)
+@emp_router.get('/list-projects', response_model=List[schemas.ShowProject])
+async def get_list_projects(db:AsyncSession = Depends(session.get_db),
+                            current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await employee._get_all_projects(db)
 
-@emp_router.get('/list-operator', response_model=List[schemas.ShowOperator])
-async def get_all_operators(oper_type_id:Optional[int]=None, status:Optional[str]=None, db:AsyncSession = Depends(session.get_db)):
-    return await employee._get_all_operators(operator_type_id=oper_type_id, session=db, status=status)
+@emp_router.post('/create_project',response_model=schemas.ShowProject)
+async def create_project(
+    name: str = Form(...),
+    start_date: datetime = Form(...),
+    end_date: datetime = Form(...),
+    progemmer_list: list[str] = Form(...),
+    price: str = Form(...),
+    db: AsyncSession = Depends(session.get_db),
+    image: Optional[UploadFile] = File(None),
+    current_user:models.Employees=Depends(get_current_user_from_token)
+    ):
 
-@emp_router.post('/change-status-operator')
-async def change_operator_status(oper_id:int, status:str, db:AsyncSession = Depends(session.get_db)):
-    return await employee._change_operator_status(oper_id=oper_id,
-                                                  status=status,
-                                                  session=db)
+    try:
+        programmer_ids = [int(x) for x in progemmer_list[0] if x.isdigit()]
+    except ValueError:
+        raise HTTPException(
+                status_code=400, detail="All elements in progemmer_list must be valid integers."
+            )
+        
+    try:
+        file_path = os.path.join(UPLOAD_DIRECTORY1, image.filename)
+        with open(file_path, 'wb') as buffer:
+            shutil.copyfileobj(image.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error saving the file.")
+    
+    body = schemas.CreateProject(
+        name=name,
+        start_date=start_date,
+        end_date=end_date,
+        programmer_ids=programmer_ids,
+        price=price
+
+    )
+    return await employee._create_project(session=db, body=body,image=f'projects/{image.filename}')
 
 @emp_router.delete('/delete-created-project')
-async def delete_created_project(project_id:int, db:AsyncSession = Depends(session.get_db)):
+async def delete_created_project(project_id:int, db:AsyncSession = Depends(session.get_db),
+                                 current_user:models.Employees=Depends(get_current_user_from_token)):
     return await employee._delete_created_project(session=db, project_id=project_id)
 
 @emp_router.patch('/update-created-proejct', response_model=schemas.ShowProject)
@@ -172,7 +164,8 @@ async def update_created_project(projec_id:int,
                                 progemmer_list: list[str] = Form(...),
                                 price: str = Form(...),
                                 image: Optional[UploadFile] = File(default=None),
-                                db:AsyncSession = Depends(session.get_db)):
+                                db:AsyncSession = Depends(session.get_db),
+                                current_user:models.Employees=Depends(get_current_user_from_token)):
     
     try:
         programmer_ids = [int(x) for x in progemmer_list[0].split(",") if x.isdigit()]
@@ -197,23 +190,43 @@ async def update_created_project(projec_id:int,
     return await employee._update_created_project(session=db,project_id=projec_id, body=body,image=image.filename)
 
 @emp_router.patch('/update-proejct-status')
-async def update_project_status(project_id:int, status:str, db:AsyncSession = Depends(session.get_db)):
+async def update_project_status(project_id:int, status:str, db:AsyncSession = Depends(session.get_db),
+                                current_user:models.Employees=Depends(get_current_user_from_token)):
     return await employee._update_status_project(session=db, project_id=project_id, status=status)
 
-@emp_router.get('/position-list', response_model=List[schemas.ShowPosition])
-async def get_list_positions(db:AsyncSession = Depends(session.get_db)):
-    return await employee._get_list_position(session=db)
+@emp_router.post('/create_operator', response_model=schemas.ShowOperator)
+async def create_new_operator(body:schemas.CreateOperator, db:AsyncSession = Depends(session.get_db),
+                              current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await employee._create_new_operatoe(session=db, body=body)
 
-@emp_router.post('/create_position',response_model=schemas.ShowPosition)
-async def create_position(name:str, db:AsyncSession = Depends(session.get_db)):
-    return await employee._create_position(session=db, name=name)
+@emp_router.get('/list-operator', response_model=List[schemas.ShowOperator])
+async def get_all_operators(oper_type_id:Optional[int]=None, status:Optional[str]=None, db:AsyncSession = Depends(session.get_db),
+                            current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await employee._get_all_operators(operator_type_id=oper_type_id, session=db, status=status)
+
+@emp_router.post('/change-status-operator')
+async def change_operator_status(oper_id:int, status:str, db:AsyncSession = Depends(session.get_db),
+                                 current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await employee._change_operator_status(oper_id=oper_id,status=status, session=db)
 
 @emp_router.patch('/update-operator')
-async def update_operator(oper_id:int, update_params:schemas.UpdateOperator, db:AsyncSession=Depends(session.get_db)):
+async def update_operator(oper_id:int, update_params:schemas.UpdateOperator, db:AsyncSession=Depends(session.get_db),
+                          current_user:models.Employees=Depends(get_current_user_from_token)):
     body = update_params.model_dump(exclude_none=True)
     return await employee._update_operator(oper_id=oper_id,
                                            body=body, session=db)
 
 @emp_router.delete('/delete-operator')
-async def delete_operator(oper_id:int, db:AsyncSession=Depends(session.get_db)):
+async def delete_operator(oper_id:int, db:AsyncSession=Depends(session.get_db),
+                          current_user:models.Employees=Depends(get_current_user_from_token)):
     return await employee._delete_oper_by_id(oper_id=oper_id, session=db)
+
+@emp_router.get('/position-list', response_model=List[schemas.ShowPosition])
+async def get_list_positions(db:AsyncSession = Depends(session.get_db),
+                             current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await employee._get_list_position(session=db)
+
+@emp_router.post('/create_position',response_model=schemas.ShowPosition)
+async def create_position(name:str, db:AsyncSession = Depends(session.get_db),
+                          current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await employee._create_position(session=db, name=name)

@@ -1,5 +1,8 @@
-from sqlalchemy import select, update, delete, and_, func, case, cast, Integer
+from datetime import datetime, timedelta
+
+from sqlalchemy import select, update, delete, and_, func, case, cast, Integer, extract
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload, selectinload
 
 from database import models, schemas
 
@@ -125,11 +128,17 @@ class IncomeExepnseDal:
         return query
     
     async def get_list_expense(self,status):
-        query = select(models.ExpenseData).where(models.ExpenseData.type==status)
+        query = select(models.ExpenseData).where(and_(models.ExpenseData.type==status, models.ExpenseData.type!='employee_salary'))
 
         res = await self.db_session.execute(query)
 
         return res.scalars().all()
+    
+    async def update_expense_by_type(self, expense_id ,**kwargs):
+        query = update(models.ExpenseData).where(models.ExpenseData.id==expense_id).values(kwargs).returning(models.ExpenseData)
+        res = await self.db_session.execute(query)
+
+        return res.scalar_one_or_none()
     
     async def delete_expense(self, expense_id):
         query = delete(models.ExpenseData).where(models.ExpenseData.id==expense_id)
@@ -139,9 +148,249 @@ class IncomeExepnseDal:
             return True
         return False
 
+    async def create_expense_employee(self, body:schemas.CreatingExepnseEmployee):
+        query = models.ExpenseData(
+            employee_salary_id=body.employee_id,
+            type='employee_salary',
+            price_paid=body.price_paied
+        )
 
+        self.db_session.add(query)
+        await self.db_session.commit()
+        return query
     
+    async def get_employee_id(self, user_id:int):
+        query = select(models.Employees).join(models.Position).where(and_(
+                models.Employees.id == user_id,
+                models.Employees.is_active == True
+            )
+        ).options(selectinload(models.Employees.position))
+        result = await self.db_session.execute(query)
+        employee = result.scalars().first()  
+        return employee
+
+    async def update_expense_employee(self, expense_id:int, pay_price:str):
+        query = update(models.ExpenseData).where(models.ExpenseData.id==expense_id).values(price_paid=pay_price).returning(models.ExpenseData)
+
+        result = await self.db_session.execute(query)
+        updated_expense = result.fetchone()  
+        
+        await self.db_session.commit()
+        return updated_expense
+
+    async def get_list_expense_employee(self):
+        query = (
+                select(models.ExpenseData)
+                .join(models.Employees)  # Ensure Employees is joined correctly
+                .join(models.Position)  # Ensure Position is joined correctly
+                .where(
+                    and_(
+                        models.ExpenseData.type == 'employee_salary',
+                        models.Employees.is_active == True
+                    )
+                )
+                .options(
+                    selectinload(models.ExpenseData.employee_salary),  # From root entity
+                    selectinload(models.ExpenseData.employee_salary).selectinload(models.Employees.position)  # Nested relationship
+                )
+            )
+
+        result = await self.db_session.execute(query)
+        all_user =  result.scalars().all()
+        return all_user
+        
+    async def get_pie_chart_expense(self):
+        query = (
+            select(
+                func.sum(
+                    case(
+                        (models.ExpenseData.type == "employee_salary", cast(models.ExpenseData.price_paid, Integer)),
+                        else_=0,
+                    )
+                ).label("total_from_student"),
+                func.sum(
+                    case(
+                        (models.ExpenseData.type == "for_office", cast(models.ExpenseData.price_paid, Integer)),
+                        else_=0,
+                    )
+                ).label("total_for_office"),
+                func.sum(
+                    case(
+                        (models.ExpenseData.type == "smm_service", cast(models.ExpenseData.price_paid, Integer)),
+                        else_=0,
+                    )
+                ).label("total_smm_service"),
+                func.sum(
+                    case(
+                        (models.ExpenseData.type == "renting", cast(models.ExpenseData.price_paid, Integer)),
+                        else_=0,
+                    )
+                ).label("total_renting"),
+                func.sum(
+                    case(
+                        (models.ExpenseData.type == "other_expense", cast(models.ExpenseData.price_paid, Integer)),
+                        else_=0,
+                    )
+                ).label("total_other_expense"),
+                func.sum(cast(models.ExpenseData.price_paid, Integer)).label("grand_total")
+            )
+        )
+
+        result = await self.db_session.execute(query)
+        stats = result.one()
+
+        return stats
+    
+    async def line_graph_month_expense(self, month):
+        current_year = datetime.utcnow().year
+        if month == 12:
+              month_for = month - 1 
+        else:
+            month_for = month
+
+        days_in_month = [
+            (datetime(current_year, month_for, day).day, 0)  # Default to (day, 0)
+            for day in range(1, (datetime(current_year, month_for+1, 1) - timedelta(days=1)).day + 1)
+        ]
+        days_dict = dict(days_in_month)  
+
+        result = await self.db_session.execute(
+            select(
+                extract('day', models.ExpenseData.date_paied).label('day'),
+                func.sum(cast(models.ExpenseData.price_paid, Integer)).label('total_real_price')
+            )
+            .where(
+                and_(
+                    extract('year', models.ExpenseData.date_paied) == current_year,  # Filter by current year
+                    extract('month', models.ExpenseData.date_paied) == month # Filter by selected month
+                )
+            )
+            .group_by(extract('day', models.ExpenseData.date_paied))
+            .order_by(extract('day', models.ExpenseData.date_paied))
+        )
+        
+        # Update dictionary with real values from DB
+        for row in result.fetchall():
+            days_dict[int(row.day)] = row.total_real_price
+
+        # Convert dictionary back to list sorted by day
+        return sorted(days_dict.items())
+    
+    async def line_graph_month_income(self, month):
+        current_year = datetime.utcnow().year
+        if month == 12:
+              month_for = month - 1 
+        else:
+            month_for = month
+
+        days_in_month = [
+            (datetime(current_year, month_for, day).day, 0)  # Default to (day, 0)
+            for day in range(1, (datetime(current_year, month_for+1, 1) - timedelta(days=1)).day + 1)
+        ]
+        days_dict = dict(days_in_month)  
+
+        result = await self.db_session.execute(
+            select(
+                extract('day', models.IncomeData.date_paied).label('day'),
+                func.sum(cast(models.IncomeData.pay_price, Integer)).label('total_real_price')
+            )
+            .where(
+                and_(
+                    extract('year', models.IncomeData.date_paied) == current_year,  # Filter by current year
+                    extract('month', models.IncomeData.date_paied) == month  # Filter by selected month
+                )
+            )
+            .group_by(extract('day', models.IncomeData.date_paied))
+            .order_by(extract('day', models.IncomeData.date_paied))
+        )
+        
+        for row in result.fetchall():
+            days_dict[int(row.day)] = row.total_real_price
+
+        # Convert dictionary back to list sorted by day
+        return sorted(days_dict.items())
+
+    async def line_graph_year_income(self,year):
+        if year is None:
+            year = datetime.utcnow().year
+
+        months_dict = {month: 0 for month in range(1, 13)}
+
+        # Fetch income data for the given year
+        result = await self.db_session.execute(
+            select(
+                extract('month', models.IncomeData.date_paied).label('month'),
+                func.sum(cast(models.IncomeData.pay_price, Integer)).label('total_real_price')
+            )
+            .where(extract('year', models.IncomeData.date_paied) == year)  # Filter by selected year
+            .group_by(extract('month', models.IncomeData.date_paied))
+            .order_by(extract('month', models.IncomeData.date_paied))
+        )
+
+        # Update dictionary with actual values from the database
+        for row in result.fetchall():
+            months_dict[int(row.month)] = row.total_real_price
+
+        return sorted(months_dict.items())    
+    
+    async def line_graph_year_expense(self,year):
+        if year is None:
+            year = datetime.utcnow().year
+
+        months_dict = {month: 0 for month in range(1, 13)}
+
+        # Fetch income data for the given year
+        result = await self.db_session.execute(
+            select(
+                extract('month', models.ExpenseData.date_paied).label('month'),
+                func.sum(cast(models.ExpenseData.price_paid, Integer)).label('total_real_price')
+            )
+            .where(extract('year', models.ExpenseData.date_paied) == year)  # Filter by selected year
+            .group_by(extract('month', models.ExpenseData.date_paied))
+            .order_by(extract('month', models.ExpenseData.date_paied))
+        )
+
+        # Update dictionary with actual values from the database
+        for row in result.fetchall():
+            months_dict[int(row.month)] = row.total_real_price
+
+        return sorted(months_dict.items()) 
 
 
+    async def get_only_expense(self):
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)  # Get the date 30 days ago
 
+        result = await self.db_session.execute(
+            select(func.sum(cast(models.ExpenseData.price_paid, Integer))).where(
+                models.ExpenseData.date_paied >= thirty_days_ago  # Filter only last 30 days
+            )
+        )
+        total_expense = result.scalar() or 0  # Handle case where no expenses exist
 
+        return total_expense
+    
+    async def get_only_income(self):
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)  # Get the date 30 days ago
+
+        result = await self.db_session.execute(
+            select(func.sum(cast(models.IncomeData.pay_price, Integer))).where(
+                models.IncomeData.date_paied >= thirty_days_ago  # Filter only last 30 days
+            )
+        )
+        total_expense = result.scalar() or 0  # Handle case where no expenses exist
+
+        return total_expense
+    
+    async def get_only_employee_count(self):
+        result = await self.db_session.execute(
+            select(func.count()).where(and_(models.Employees.is_active==True))
+        )
+
+        return result.scalar() or 0 
+    
+    async def gef_only_project_count(self):
+        result = await self.db_session.execute(
+            select(func.count()).where(models.Project.is_deleted==False)
+        )
+
+        return result.scalar() or 0

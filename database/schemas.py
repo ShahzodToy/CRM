@@ -197,7 +197,7 @@ class ShowIncomeStudent(BaseModel):
     name:str
     real_price:str
     pay_price:str
-    left_price:str
+    left_price:int
     date_paied:datetime
     position:str
     type:str
@@ -249,6 +249,7 @@ class CreateNewExpence(BaseModel):
 
 class ShowExpenseType(BaseModel):
     id:int
+    name:str
     price_paid:str
     description:str
     date_paied:datetime
@@ -270,3 +271,27 @@ class ShowExepnseUser(BaseModel):
     date_paid:datetime
     price_paid:datetime
     remainder_price:str
+
+class CreatingExepnseEmployee(BaseModel):
+    employee_id:int
+    price_paied:str
+
+class ShowExpenseEmployee(BaseModel):
+    id:int
+    pay_paied:str
+    remainder_price:int
+    date_last_paied:datetime
+    first_name:str
+    last_name:str
+    position_name:str
+    start_of_job:datetime
+    salary:int
+    phone_number:str
+    img:str|None
+
+class UpdateExpenseByType(BaseModel):
+    name:Optional[str|None]=None
+    price_paid:Optional[str|None] = None
+    description:Optional[str|None] = None
+    date_paied:Optional[datetime|None] = None
+    real_price:Optional[str|None] = None

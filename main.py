@@ -11,7 +11,14 @@ from api.income_expense_handler import expense_income_handler
 from api.login_handler import login_user
 from api.common_handler import common_router
 
-app = FastAPI()
+app = FastAPI(
+    title="Repid CRM API",
+    description="This is advanced api system in the world leading by google, meta and netflix",
+    version="1.0.0",
+    docs_url="/api/v1",  # Change the URL to "/api-docs"
+    redoc_url="/redoc/api/v1",    # Optionally, change the URL for ReDoc documentation
+    openapi_url="/openapi.json"
+)
 add_pagination(app)
 main_api_router = APIRouter()
 app.mount("/media", StaticFiles(directory="./media"), name="media")
@@ -39,5 +46,5 @@ async def checking_status():
 
 if __name__ == '__main__':
     
-    uvicorn.run(app, host='localhost',port=8000)
+    uvicorn.run(app, host='repid-crm',port=8000)
     
