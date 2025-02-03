@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi_pagination import Page, paginate
 from api.action import common_action
 from database import schemas, session, models
 from api.login_handler import get_current_user_from_token
@@ -11,13 +12,15 @@ from api.login_handler import get_current_user_from_token
 common_router = APIRouter()
 
 #create upcoming expenses and maybe incomes for the company handlers
-@common_router.get('/list-income-expected-val', response_model=List[schemas.ShowExpectedValue])
+@common_router.get('/list-income-expected-val', response_model=Page[schemas.ShowExpectedValue])
 async def get_all_income_val(db:AsyncSession = Depends(session.get_db), current_user:models.Employees=Depends(get_current_user_from_token)):
-    return await common_action._get_all_income_expected_value(session=db)
+    expected_value =  await common_action._get_all_income_expected_value(session=db)
+    return paginate(expected_value)
 
-@common_router.get('/list-expense-expected-val', response_model=List[schemas.ShowExpectedValue])
+@common_router.get('/list-expense-expected-val', response_model=Page[schemas.ShowExpectedValue])
 async def get_all_income_val(db:AsyncSession = Depends(session.get_db),current_user:models.Employees=Depends(get_current_user_from_token)):
-    return await common_action._get_all_expense_expected_value(session=db)
+    expense_list =  await common_action._get_all_expense_expected_value(session=db)
+    return paginate(expense_list)
 
 @common_router.post('/create-expected-value', response_model=schemas.ShowExpectedValue)
 async def get_all_income_val(body:schemas.CreateExpectedValue, db:AsyncSession = Depends(session.get_db),
@@ -37,10 +40,11 @@ async def update_expected_value(expected_avl_id:int ,updated_val_params:schemas.
     return await common_action._update_expected_value(session=db, body=body, expected_avl_id=expected_avl_id)
 
 #in this right here you can see only task related handlers
-@common_router.get('/get-all-new-task', response_model=List[schemas.ShowNewTask])
+@common_router.get('/get-all-new-task', response_model=Page[schemas.ShowNewTask])
 async def create_new_task(task_id:Optional[int]=None ,status:Optional[str]=None,db:AsyncSession = Depends(session.get_db),
                           current_user:models.Employees=Depends(get_current_user_from_token)):
-    return await common_action._get_all_tasks(status=status, session=db,task_id=task_id)
+    new_tasks = await common_action._get_all_tasks(status=status, session=db,task_id=task_id)
+    return paginate(new_tasks)
 
 @common_router.post('/create-new-task', response_model=schemas.ShowNewTask)
 async def create_new_task(body:schemas.CreateNewTask, db:AsyncSession = Depends(session.get_db),
@@ -74,3 +78,7 @@ async def create_operator_type(name:str, db:AsyncSession=Depends(session.get_db)
                                current_user:models.Employees=Depends(get_current_user_from_token)):
     return await common_action._create_operator_type(session=db,name=name)
 
+@common_router.get('/search')
+async def search_position_project(query:str, db:AsyncSession=Depends(session.get_db),
+                                  current_user:models.Employees=Depends(get_current_user_from_token)):
+    return await common_action._search_position_project(query=query, session=db)
