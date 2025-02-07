@@ -4,7 +4,7 @@ from utils.settings import SECRET_KEY, ALGORITHM
 from jose import jwt, JWTError
 
 from typing import Optional
-from api.login_handler import get_current_user_from_token
+
 
 chat_handler = APIRouter()
 
@@ -18,16 +18,16 @@ async def get_current_user_from_token(
     decodes it, and returns the user.
     """
     if not token:
-        raise HTTPException(status_code=HTTPException, detail="Token is required")
+        raise HTTPException(status_code=400, detail="Token is required")
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")  # Get the user from the token
         if username is None:
-            raise HTTPException(status_code=HTTPException, detail="Invalid token")
+            raise HTTPException(status_code=400, detail="Invalid token")
         return username
     except JWTError:
-        raise HTTPException(status_code=HTTPException, detail="Invalid token")
+        raise HTTPException(status_code=400, detail="Invalid token")
     
 
 @chat_handler.websocket('/ws/{room_id}')
